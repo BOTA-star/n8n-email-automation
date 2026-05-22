@@ -69,19 +69,8 @@ Workflow trả về kết quả dạng:
 * Toàn bộ logic xử lý nằm trong các node của n8n
 * Cần cấu hình đầy đủ credentials trước khi chạy
 
----
-
 ## 7. Tài liệu liên quan
 
 * File workflow: `workflow.json`
 * AI Model: Gemini Chat API
 * Platform: n8n
-
----
-
-💡 Nếu bạn muốn nâng level CV hơn nữa, mình có thể giúp bạn:
-
-* vẽ architecture diagram cho cái flow này
-* hoặc rewrite README kiểu “senior review nhìn phát hiểu luôn hệ thống”
-
-Chỉ cần nói 👍
