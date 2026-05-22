@@ -1,0 +1,815 @@
+{
+  "name": "email summarize workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "threadId": "2630520138253265401"
+      },
+      "type": "n8n-nodes-social-zalo.zaloUserInteract",
+      "typeVersion": 1,
+      "position": [
+        2368,
+        368
+      ],
+      "id": "b0174c18-265d-430f-9900-d5cff430078c",
+      "name": "Gửi tin nhắn",
+      "credentials": {
+        "zaloUserCredentialsApi": {
+          "id": "8QqmeeaAYNXs3lj0",
+          "name": "Zalo Da Digiaiassistant - 2026-05-21T08:28:07.259Z"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "includeSelfEvents": true,
+        "getMetadata": true
+      },
+      "type": "n8n-nodes-social-zalo.zaloUser",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        16
+      ],
+      "id": "6143bccd-3082-48ad-b8a4-c7d765987ca8",
+      "name": "Zalo Event Trigger",
+      "credentials": {
+        "zaloUserCredentialsApi": {
+          "id": "8QqmeeaAYNXs3lj0",
+          "name": "Zalo Da Digiaiassistant - 2026-05-21T08:28:07.259Z"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "items = _input.all()\n\noutputItems = []\n\nif not items or len(items) == 0:\n    return [{\n        \"json\": {\n            \"all_files_summary\": \"Email thuần túy, không có tệp đính kèm.\"\n        }\n    }]\n\nfor i in range(len(items)):\n\n    currentItem = items[i]\n    json_data = currentItem[\"json\"]\n\n    aiResponse = str(\n        json_data.get(\"output\", {}).get(\"text\")\n        or json_data.get(\"output\")\n        or json_data.get(\"text\")\n        or json_data.get(\"response\")\n        or \"\"\n    )\n\n    fileName = json_data[\"output\"][\"file_name\"]\n    subject = json_data[\"output\"][\"subject\"]\n    sender = json_data[\"output\"][\"sender\"]\n    emailBody = json_data[\"output\"][\"email_body\"]\n\n    fileSummary = \"\"\n\n    if aiResponse.strip():\n        fileSummary = f\"{aiResponse.strip()}\"\n    else:\n        fileSummary = \"(Không có nội dung tóm tắt từ AI)\"\n\n    outputItems.append({\n        \"json\": {\n            \"subject\": subject,\n            \"sender\": sender,\n            \"email_body\": emailBody,\n            \"fileName\": fileName,\n            \"text\": fileSummary\n        }\n    })\n\nreturn outputItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        352
+      ],
+      "id": "4de275d6-747c-44a3-a320-6dc040e5264e",
+      "name": "Hợp nhất data"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        944,
+        528
+      ],
+      "id": "01de5e1b-38f1-41e0-8e39-cfafd9d22e10",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gexWiv8qwlvLHuFF",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"text\": \"Nội dung tóm tắt của AI...\",\n  \"file_name\": \"={{ $json.file_name }}\",\n  \"sender\": \"={{ $json.sender }}\",\n  \"subject\": \"={{ $json.subject }}\",\n  \"email_body\": \"={{ $json.email_body }}\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1216,
+        496
+      ],
+      "id": "636c3da0-f9df-4e77-8536-a1d33a88381d",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hãy viết một đoạn tóm tắt ngắn gọn, cô đọng về nội dung cấu trúc văn bản/JSON dưới đây:\n{{ JSON.stringify($json) }}\nVới filename: {{ $('Switch').item.json.file_name }}\nsender: \n{{ $('Switch').item.json.sender }}\nsubject: {{ $('Switch').item.json.subject }}\nemail_body: {{ $('Switch').item.json.email_body }}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        976,
+        320
+      ],
+      "id": "ee2f390a-4db9-4673-ae80-4bb7e93a3abd",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.file_type }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9b1fccc3-f0c7-43df-a6e6-9ce7cc439bb1"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cac5bccc-b510-40f0-8d38-687feee453c3",
+                    "leftValue": "={{ $json.file_type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8bc7eee2-fdad-43fd-81c2-a14c7ced76b6",
+                    "leftValue": "={{ $json.file_type }}",
+                    "rightValue": "none",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        64,
+        304
+      ],
+      "id": "a6ca443a-19e6-45cf-85f4-d799524e9f7b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"text\": \"Nội dung tóm tắt của AI...\",\n  \"file_name\": \"={{ $json.file_name }}\",\n  \"sender\": \"={{ $json.sender }}\",\n  \"subject\": \"={{ $json.subject }}\",\n  \"email_body\": \"={{ $json.email_body }}\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1136,
+        48
+      ],
+      "id": "42972364-c41c-4a09-83ac-46e577ebef8f",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        944,
+        32
+      ],
+      "id": "daa13719-1429-4791-bacb-30031676685f",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gexWiv8qwlvLHuFF",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hãy viết một đoạn tóm tắt ngắn gọn, cô đọng về nội dung văn bản PDF dưới đây:\n{{ $json.text }}\nVới filename: {{ $('Switch').item.json.file_name }}\nsender: \n{{ $('Switch').item.json.sender }}\nsubject: {{ $('Switch').item.json.subject }}\nemail_body: {{ $('Switch').item.json.email_body }}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        976,
+        -144
+      ],
+      "id": "b6f5254f-9ee3-4dba-9674-31a9ff74fb87",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "includeSpamTrash": false
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        320
+      ],
+      "id": "0166f52e-7f40-48f6-ac27-bb6545db6c69",
+      "name": "Gmail Trigger1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "t1xFy1iDQ84iKiHK",
+          "name": "developer@vndigitech.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "=8669561591",
+        "text": "=*Chủ đề:* {{ $('Kiểm tra Tệp đính kèm').item.json.subject }}\n*Người gửi:* {{ $('Kiểm tra Tệp đính kèm').item.json.sender.value[0].address }}\n*Tóm tắt:*\n{{ $json.output.summary }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2816,
+        240
+      ],
+      "id": "cb08567c-a954-468d-93ff-8df18f7d0fa4",
+      "name": "Send a text message",
+      "webhookId": "274e17fd-4ae5-4722-9754-f06e5bc61e19",
+      "credentials": {
+        "telegramApi": {
+          "id": "rNZsirnd4eHAK8Fn",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1e9wmHHAg1efRM4CL6rIwGnY9UUGSW2PurMgj3DYQcO4",
+          "mode": "list",
+          "cachedResultName": "Summarization Report Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1e9wmHHAg1efRM4CL6rIwGnY9UUGSW2PurMgj3DYQcO4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1e9wmHHAg1efRM4CL6rIwGnY9UUGSW2PurMgj3DYQcO4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "summary": "={{ $json.output.summary }}",
+            "subject": "={{ $('Kiểm tra Tệp đính kèm').item.json.subject }}",
+            "sender": "={{ $('Kiểm tra Tệp đính kèm').item.json.sender.value[0].address }}",
+            "action": "={{ $json.error ? \"N/A\" : ($json.suggested_actions?.join(\"\\n\") || \"N/A\") }}",
+            "category": "={{ $json.error ? \"N/A\" : $json.classification || \"N/A\" }}",
+            "error log": "0"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender",
+              "displayName": "sender",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error log",
+              "displayName": "error log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3168,
+        96
+      ],
+      "id": "a8ee70fb-201d-4fe0-a311-b3c9d1cf214d",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GiwYZydX81BAtXSp",
+          "name": "developer@vndigitech.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "joinPages": true,
+          "keepSource": "json"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        512,
+        48
+      ],
+      "id": "cf9e9179-529d-4fb7-801f-15462892045e",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        496,
+        320
+      ],
+      "id": "716926f4-5fce-4b47-a217-d4bd54827d9b",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hãy tóm tắt email sau ngắn gọn để gửi thông báo Telegram/Zalo.\n\nSubject:\n{{ $json.subject }}\n\nSender:\n{{ $json.sender }}\n\nFile name:\n{{ $json.file_name }}\nNội dung email:\n{{ $json.email_body }}\n\nViết ngắn gọn, dễ đọc.",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        928,
+        688
+      ],
+      "id": "465b7943-856f-4bc7-87b2-957e7a4df344",
+      "name": "Basic LLM Chain3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        928,
+        896
+      ],
+      "id": "0e4ba9e9-8906-42e8-9e75-6d441a3db2bf",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gexWiv8qwlvLHuFF",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"text\": \"Nội dung tóm tắt của AI...\",\n  \"file_name\": \"={{ $json.file_name }}\",\n  \"sender\": \"={{ $json.sender }}\",\n  \"subject\": \"={{ $json.subject }}\",\n  \"email_body\": \"={{ $json.email_body }}\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1072,
+        896
+      ],
+      "id": "491e10d6-a91b-4730-b805-4605ee709ceb",
+      "name": "Structured Output Parser3"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "items = _input.all()\noutput_items = []\n\nfor item in items:\n    body = item[\"json\"].get(\"text\") or item[\"json\"].get(\"html\") or \"Nội dung mail trống\"\n    subject = item[\"json\"].get(\"subject\") or \"Không có tiêu đề\"\n    sender = \"Không rõ người gửi\"\n\n    if item[\"json\"].get(\"from\") and item[\"json\"][\"from\"].get(\"text\"):\n        sender = item[\"json\"][\"from\"][\"text\"]\n    elif isinstance(item[\"json\"].get(\"from\"), str):\n        sender = item[\"json\"][\"from\"]\n\n    binary_data = item.get(\"binary\")\n\n    # Nếu CÓ file đính kèm\n    if binary_data and len(binary_data.keys()) > 0:\n        for key in binary_data.keys():\n            file_info = binary_data[key]\n            file_name = file_info.get(\"fileName\") or \"File_Dinh_Kem\"\n            file_ext = (file_name.split(\".\")[-1] if \".\" in file_name else \"\").lower()\n\n            file_type = \"other\"\n            if file_ext == \"pdf\":\n                file_type = \"pdf\"\n            elif file_ext in [\"txt\", \"csv\", \"json\", \"xml\"]:\n                file_type = \"text\"\n\n            output_items.append({\n                \"json\": {\n                    \"subject\": subject,\n                    \"sender\": sender,\n                    \"email_body\": body,\n                    \"file_name\": file_name,\n                    \"file_type\": file_type,\n                    \"has_attachment\": True\n                },\n                \"binary\": {\n                    \"data\": file_info  # Luôn đưa về key 'data' cố định\n                }\n            })\n    else:\n        # Nếu KHÔNG CÓ file đính kèm\n        output_items.append({\n            \"json\": {\n                \"subject\": subject,\n                \"sender\": sender,\n                \"email_body\": body,\n                \"file_name\": None,\n                \"file_type\": \"none\",\n                \"has_attachment\": False\n            }\n        })\n\nreturn output_items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        320
+      ],
+      "id": "50777f86-5bb9-41b3-a2d3-60d157419f2c",
+      "name": "Kiểm tra Tệp đính kèm"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "items = _input.all()\n\noutputItems = []\n\nfor item in items:\n\n    output = item[\"json\"].get(\"output\", {})\n\n    outputItems.append({\n        \"json\": {\n            \"text\": output.get(\"text\", \"\"),\n            \"file_name\": output.get(\"file_name\", \"\"),\n            \"sender\": output.get(\"sender\", \"\"),\n            \"subject\": output.get(\"subject\", \"\"),\n            \"email_body\": output.get(\"email_body\", \"\")\n        }\n    })\n\nreturn outputItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        688
+      ],
+      "id": "aac37208-927c-42fe-9848-c48d3331e25d",
+      "name": "Chuẩn hóa đầu ra"
+    }
+  ],
+  "pinData": {
+    "Zalo Event Trigger": [
+      {
+        "json": {
+          "type": 0,
+          "data": {
+            "actionId": "13135923713987",
+            "msgId": "7849891484337",
+            "cliMsgId": "1779352358489",
+            "msgType": "webchat",
+            "uidFrom": "708973648432108462",
+            "idTo": "2630520138253265401",
+            "dName": "Da Digiaiassistant",
+            "ts": "1779352358526",
+            "status": 1,
+            "content": "Hi",
+            "notify": "1",
+            "ttl": 0,
+            "userId": "0",
+            "uin": "0",
+            "topOut": "0",
+            "topOutTimeOut": "0",
+            "topOutImprTimeOut": "0",
+            "propertyExt": {
+              "color": -1,
+              "size": -1,
+              "type": 1,
+              "subType": 0,
+              "ext": "{\"emoji\":{\"content\":0},\"shouldParseLinkOrContact\":1}"
+            },
+            "paramsExt": {
+              "countUnread": 1,
+              "containType": 0,
+              "platformType": 0
+            },
+            "reference": {
+              "type": 3,
+              "data": "{\"logSrcType\":5,\"fwLvl\":0,\"id\":\"7623702403aa80d282d1571aa89e6680\",\"ts\":1779352358489}"
+            },
+            "cmd": 501,
+            "st": 3,
+            "at": 0,
+            "realMsgId": "0"
+          },
+          "threadId": "2630520138253265401",
+          "isSelf": true,
+          "metadata": {
+            "userInfo": {
+              "unchanged_profiles": {},
+              "phonebook_version": 1754535279,
+              "changed_profiles": {
+                "708973648432108462": {
+                  "userId": "708973648432108462",
+                  "username": "t_m7egab8a9z",
+                  "displayName": "Da Digiaiassistant",
+                  "zaloName": "Da Digiaiassistant",
+                  "avatar": "https://s160-ava-talk.zadn.vn/default",
+                  "bgavatar": "",
+                  "cover": "https://cover-talk.zadn.vn/default",
+                  "gender": 0,
+                  "dob": 1226250000,
+                  "sdob": "10/11/2008",
+                  "status": "",
+                  "phoneNumber": "+84973402129",
+                  "isFr": 0,
+                  "isBlocked": 0,
+                  "lastActionTime": 1779352358512,
+                  "lastUpdateTime": 1774584300,
+                  "isActive": 1,
+                  "key": 0,
+                  "type": 0,
+                  "isActivePC": 1,
+                  "isActiveWeb": 1,
+                  "isValid": 1,
+                  "userKey": "708973648432108462",
+                  "accountStatus": 0,
+                  "oaInfo": null,
+                  "user_mode": 0,
+                  "globalId": "QI9T1H2FLSDNAJCT29OPRE8JUV0Q5A80",
+                  "bizPkg": {
+                    "label": null,
+                    "pkgId": 0
+                  },
+                  "createdTs": 1754535268,
+                  "isEnterpriseAccount": 0,
+                  "oa_status": null
+                }
+              }
+            },
+            "globalId": "QI9T1H2FLSDNAJCT29OPRE8JUV0Q5A80",
+            "zaloName": "Da Digiaiassistant",
+            "avatar": "https://s160-ava-talk.zadn.vn/default",
+            "phoneNumber": "+84973402129",
+            "sdob": "10/11/2008",
+            "gender": 0,
+            "status": "",
+            "myGlobalId": "QI9T1H2FLSDNAJCT29OPRE8JUV0Q5A80",
+            "myPhoneNumber": "+84973402129",
+            "myUid": "708973648432108462",
+            "myZaloName": "Da Digiaiassistant"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Hợp nhất data": {
+      "main": [
+        [
+          {
+            "node": "Gửi tin nhắn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Hợp nhất data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Hợp nhất data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra Tệp đính kèm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain3": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hóa đầu ra",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra Tệp đính kèm": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn hóa đầu ra": {
+      "main": [
+        [
+          {
+            "node": "Gửi tin nhắn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0d26ed39-b26b-4a42-bc45-3e259cac4107",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c92470f0ed2b9fb26b0fd21c9169671a3f0b3b320eb5af583d8e8a594272e77e"
+  },
+  "id": "AbA9Fohn0Ps3YgRk",
+  "tags": []
+}
